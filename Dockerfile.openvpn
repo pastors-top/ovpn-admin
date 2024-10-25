@@ -4,6 +4,19 @@ RUN apk add --update bash openvpn easy-rsa iptables nftables  && \
     ln -s /usr/share/easy-rsa/easyrsa /usr/local/bin && \
     wget https://github.com/pashcovich/openvpn-user/releases/download/v1.0.4/openvpn-user-linux-${TARGETARCH}.tar.gz -O - | tar xz -C /usr/local/bin && \
     rm -rf /tmp/* /var/tmp/* /var/cache/apk/* /var/cache/distfiles/*
+RUN mkidr -p /lib/modules
+# 创建 nftables 配置文件
+RUN mkdir -p /etc/nftables \
+    && nft create table ip filter
+
+# 添加默认链和规则
+RUN nft add chain ip filter input { type filter hook input priority 0 \; } \
+    && nft add chain ip filter output { type filter hook output priority 0 \; } \
+    && nft add chain ip filter forward { type filter hook forward priority 0 \; }
+
+# 保存 nftables 配置
+RUN nft save > /etc/nftables.conf
+
 RUN if [ -f "/usr/local/bin/openvpn-user-${TARGETARCH}" ]; then ln -s /usr/local/bin/openvpn-user-${TARGETARCH} /usr/local/bin/openvpn-user; fi
 COPY setup/ /etc/openvpn/setup
 RUN chmod +x /etc/openvpn/setup/configure.sh
